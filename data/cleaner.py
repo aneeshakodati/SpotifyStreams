@@ -3,6 +3,15 @@ import pandas as pd
 spotify_df = pd.read_csv('spotify_most_streamed_songs.csv')
 events_df = pd.read_csv('world_important_events.csv')
 
+
+streams_cleaned=spotify_df[['streams', 'bpm', 'energy_%', 'speechiness_%']]
+streams_cleaned=streams_cleaned.dropna()
+streams_cleaned['energy_%'] = streams_cleaned['energy_%'].apply(lambda x: x * 100 if x <= 1 else x)
+
+streams_cleaned['speechiness_%'] = streams_cleaned['speechiness_%'].apply(lambda x: x * 100 if x <= 1 else x)
+
+
+
 spotify_cleaned = spotify_df[['released_year', 'bpm', 'valence_%', 'energy_%', 'liveness_%']]
 
 spotify_cleaned = spotify_cleaned.dropna()
@@ -10,6 +19,9 @@ spotify_cleaned = spotify_cleaned.dropna()
 spotify_cleaned['valence_%'] = spotify_cleaned['valence_%'].apply(lambda x: x * 100 if x <= 1 else x)
 spotify_cleaned['energy_%'] = spotify_cleaned['energy_%'].apply(lambda x: x * 100 if x <= 1 else x)
 spotify_cleaned['liveness_%'] = spotify_cleaned['liveness_%'].apply(lambda x: x * 100 if x <= 1 else x)
+
+
+
 
 spotify_aggregated = spotify_cleaned.groupby('released_year').agg({
     'valence_%': 'mean',
@@ -38,3 +50,4 @@ print(merged_df.head())
 
 merged_df.to_csv('cleaned_data.csv', index=False)
 
+streams_cleaned.to_csv('cleaned_streams.csv', index=False)
