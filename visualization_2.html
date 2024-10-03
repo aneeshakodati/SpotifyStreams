@@ -27,7 +27,7 @@
     </style>
 </head>
 <body>
-    
+
     <div id="visualization"></div>
     <label for="metricSelect">Select Metric:</label>
     <select id="metricSelect">
@@ -38,10 +38,7 @@
     </select>
 
     <script>
-        // need to fix:
-        // 1. fix scale as BPM is getting cut off
-        // 2. maybe include description of what each metric is
-        // 3. maybe re-clean data to include Outcome field in events dataset - we can aggregate and create an overall outcome field to show if the year was bad, good, etc
+
         const margin = { top: 40, right: 100, bottom: 50, left: 60 },
               width = 960 - margin.left - margin.right,
               height = 500 - margin.top - margin.bottom;
@@ -61,7 +58,7 @@
                        .y(d => yScale(d.value));
 
         const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
-        
+
         d3.csv("data/cleaned_data_2.csv").then(data => {
             data.forEach(d => {
                 d.Year = +d.Year;
@@ -72,7 +69,6 @@
             });
 
             xScale.domain(d3.extent(data, d => d.Year));
-            yScale.domain([0, 100]);  
 
             const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
             svg.append("g")
@@ -86,17 +82,12 @@
                .text("Year");
 
             const yAxis = d3.axisLeft(yScale);
-            svg.append("g")
-               .call(yAxis)
-               .append("text")
-               .attr("class", "axis-label")
-               .attr("x", -height / 2)
-               .attr("y", -40)
-               .attr("transform", "rotate(-90)")
-               .style("text-anchor", "middle")
-               .text("Value");
+            const yAxisGroup = svg.append("g").call(yAxis);
 
             let currentMetric = "Avg_Valence";
+            
+            yScale.domain([0, d3.max(data, d => d[currentMetric])]);
+
             let linePath = svg.append("path")
                               .datum(data)
                               .attr("class", "line")
@@ -120,6 +111,9 @@
 
             function updateMetric(newMetric) {
                 currentMetric = newMetric;
+
+                yScale.domain([0, d3.max(data, d => d[currentMetric])]);
+                yAxisGroup.transition().duration(1000).call(yAxis);
 
                 linePath.transition()
                         .duration(1000)
