@@ -15,6 +15,16 @@
             font-size: 14px;
             font-family: Arial, sans-serif;
         }
+
+        .grid line {
+            stroke: lightgrey;
+            stroke-opacity: 0.5;
+            shape-rendering: crispEdges;
+        }
+
+        .grid path {
+            stroke-width: 0;
+        }
     </style>
 </head>
 
@@ -59,21 +69,48 @@
                 .domain([d3.min(data, d => d.energy), d3.max(data, d => d.energy)]);
 
             // Create X and Y axes
+            const xAxis = d3.axisBottom(x);
+            const yAxis = d3.axisLeft(y);
+
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x));
+                .call(xAxis);
 
             svg.append("g")
-                .call(d3.axisLeft(y));
+                .call(yAxis);
 
-            // Add dots with lower opacity and size
+            // Add gridlines for the x axis
+            svg.append("g")
+                .attr("class", "grid")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x)
+                    .tickSize(-height)  // Extend the grid lines across the chart
+                    .tickFormat(""))     // Remove tick labels for the grid lines
+                .selectAll("line")
+                .attr("stroke", "lightgrey")
+                .attr("stroke-opacity", "0.5");
+
+            // Add gridlines for the y axis
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(y)
+                    .tickSize(-width)  // Extend the grid lines across the chart
+                    .tickFormat(""))    // Remove tick labels for the grid lines
+                .selectAll("line")
+                .attr("stroke", "lightgrey")
+                .attr("stroke-opacity", "0.5");
+
+            // Function to add jitter (random small offset)
+            const jitter = () => (Math.random() - 0.5) * 15;  // Small random offset between -5 and +5
+
+            // Add dots with jitter and lower opacity
             svg.selectAll("circle.bubble")
                 .data(data)
                 .join("circle")
                 .attr("class", "bubble")
-                .attr("cx", d => x(d.bpm))
+                .attr("cx", d => x(d.bpm) + jitter())  // Apply jitter to the cx position
                 .attr("cy", d => y(d.streams))
-                .attr("r", 4)
+                .attr("r", 5)
                 .style("fill", d => color(d.energy))
                 .style("opacity", 0.85)
                 .style("stroke", "black")
@@ -105,9 +142,9 @@
                 .style("text-decoration", "underline")
                 .text("Song Popularity (Streams) vs BPM");
 
-            // Add a legend for the color scale
+            // Move the legend further to the right
             const legend = svg.append("g")
-                .attr("transform", `translate(${width + 50},${height / 6})`);
+                .attr("transform", `translate(${width + 120},${height / 6})`);  // Moved from width + 50 to width + 120
 
             const gradientScale = d3.scaleLinear()
                 .domain([0, 1])
