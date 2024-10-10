@@ -1,96 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify Streams Visualization</title>
+    <title>Song Popularity vs. BPM</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
-        .line {
-            fill: none;
-            stroke-width: 2;
+        .bubble {
+            opacity: 0.8;
         }
+
         .axis-label {
             font-size: 14px;
             font-family: Arial, sans-serif;
         }
-        .tooltip {
-            position: absolute;
-            background-color: #fff;
-            padding: 5px;
-            border: 1px solid #ccc;
-            pointer-events: none;
-        }
-        .legend {
-            cursor: pointer;
-        }
     </style>
 </head>
+
 <body>
-    
-    <div id="visualization"></div>
-    <label for="metricSelect">Select Metric:</label>
-    <select id="metricSelect">
-        <option value="energy_%">Valence</option>
-        <option value="bpm">BPM</option>
-        <option value="speechiness_%">Speechiness</option>
-    </select>
+    <h2>Song Popularity (Streams) vs. BPM, Colored by Energy</h2>
+    <div id="chart"></div>
 
     <script>
-        const margin = { top: 40, right: 100, bottom: 50, left: 60 },
-              width = 960 - margin.left - margin.right,
-              height = 500 - margin.top - margin.bottom;
+        // Set dimensions
+        const margin = { top: 50, right: 100, bottom: 60, left: 70 },
+            width = 1000 - margin.left - margin.right,
+            height = 600 - margin.top - margin.bottom;
 
-        const svg = d3.select("#visualization")
-                      .append("svg")
-                      .attr("width", width + margin.left + margin.right)
-                      .attr("height", height + margin.top + margin.bottom)
-                      .append("g")
-                      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+        // Append SVG to body
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right + 100)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        const xScale = d3.scaleLinear().range([0, width]);
-        const yScale = d3.scaleLinear().range([height, 0]);
+        // Load the data
+        d3.csv("data/cleaned_streams.csv").then(function (data) {
 
-        const line = d3.line()
-                       .x(d => xScale(d.Year))
-                       .y(d => yScale(d.value));
-
-        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
-        
-        d3.csv("data/cleaned_streams.csv").then(data => {
+            // Convert numerical values from strings to numbers and handle any non-numeric characters
             data.forEach(d => {
-                d.Streams = +d.Streams;
-                d.Avg_BPM = +d.Avg_BPM;
-                d.Avg_Speechiness = +d.Speechiness;
-                d.Avg_Energy = +d.Avg_Energy;
+                d.streams = +d.streams / 1000000;  // Convert to millions
+                d.bpm = +d.bpm;
+                d.energy = parseFloat(d["energy_%"].trim());
             });
 
-            xScale.domain(d3.extent(data, d => d.Year));
-            yScale.domain([0, 100]);  
+            // Set scales
+            const x = d3.scaleLinear()
+                .domain([d3.min(data, d => d.bpm) - 10, d3.max(data, d => d.bpm) + 10])
+                .range([0, width]);
 
-            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d.streams)])  // Already in millions
+                .range([height, 0]);
+
+            const color = d3.scaleSequential(d3.interpolateCool)
+                .domain([d3.min(data, d => d.energy), d3.max(data, d => d.energy)]);
+
+            // Create X and Y axes
             svg.append("g")
-               .attr("transform", `translate(0, ${height})`)
-               .call(xAxis)
-               .append("text")
-               .attr("class", "axis-label")
-               .attr("x", width / 2)
-               .attr("y", 40)
-               .style("text-anchor", "middle")
-               .text("Year");
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x));
 
-            const yAxis = d3.axisLeft(yScale);
             svg.append("g")
-               .call(yAxis)
-               .append("text")
-               .attr("class", "axis-label")
-               .attr("x", -height / 2)
-               .attr("y", -40)
-               .attr("transform", "rotate(-90)")
-               .style("text-anchor", "middle")
-               .text("Value");
+                .call(d3.axisLeft(y));
 
+            // Add dots with lower opacity and size
+            svg.selectAll("circle.bubble")
+                .data(data)
+                .join("circle")
+                .attr("class", "bubble")
+                .attr("cx", d => x(d.bpm))
+                .attr("cy", d => y(d.streams))
+                .attr("r", 4)
+                .style("fill", d => color(d.energy))
+                .style("opacity", 0.85)
+                .style("stroke", "black")
+                .style("stroke-width", 0.5);
+
+            // Add X axis label
+            svg.append("text")
+                .attr("text-anchor", "end")
+                .attr("x", width / 2 + margin.left)
+                .attr("y", height + margin.top - 10)
+                .style("font-size", "12px")
+                .text("BPM");
+
+            // Add Y axis label with "in Millions"
+            svg.append("text")
+                .attr("text-anchor", "end")
+                .attr("x", -height / 2 + margin.top)
+                .attr("y", -margin.left + 15)
+                .attr("transform", "rotate(-90)")
+                .style("font-size", "12px")
+                .text("Streams (in Millions)");
+
+            // Add title
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .style("text-decoration", "underline")
+                .text("Song Popularity (Streams) vs BPM");
+
+            // Add a legend for the color scale
+            const legend = svg.append("g")
+                .attr("transform", `translate(${width + 50},${height / 6})`);
+
+            const gradientScale = d3.scaleLinear()
+                .domain([0, 1])
+                .range([d3.min(data, d => d.energy), d3.max(data, d => d.energy)]);
+
+            // Bind and update rectangles
+            const legendRects = legend.selectAll("rect")
+                .data(d3.range(0, 1, 0.01))
+                .join("rect")
+                .attr("y", (d, i) => i * 3)  // Adjust height between rectangles
+                .attr("width", 30)
+                .attr("height", 3)
+                .attr("fill", d => color(gradientScale(d)));
+
+            // Add labels to the top and bottom of the color scale
+            legend.append("text")
+                .attr("x", -5)
+                .attr("y", 0)
+                .attr("dy", "0.32em")
+                .attr("text-anchor", "end")
+                .style("font-size", "12px")
+                .text("High Energy");
+
+            // Move the "Low Energy" label up and align with the new bottom position of the scale
+            legend.append("text")
+                .attr("x", -5)
+                .attr("y", legendRects.size() * 3 - 5)  // Dynamically adjust based on rectangle height
+                .attr("dy", "0.32em")
+                .attr("text-anchor", "end")
+                .style("font-size", "12px")
+                .text("Low Energy");
+
+        }).catch(function (error) {
+            console.log(error);
         });
     </script>
 </body>
+
 </html>
