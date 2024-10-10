@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Song Popularity vs. BPM</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    /* Consistent bubble style across both visualizations */
+    .bubble {
+      opacity: 0.8;
+      stroke-width: 0.5;
+    }
+
+    /* Consistent axis label styling */
+    .axis-label {
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Consistent gridlines styling */
+    .grid line {
+      stroke: lightgrey;
+      stroke-opacity: 0.5;
+      shape-rendering: crispEdges;
+    }
+
+    .grid path {
+      stroke-width: 0;
+    }
+
+    /* Consistent legend styling */
+    .legend {
+      font-size: 12px;
+    }
+
+    .legend rect {
+      stroke: #ccc;
+      stroke-width: 1px;
+    }
+
+    /* Unified title styling */
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      text-anchor: middle;
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    .small-label {
+      font-size: 10px;
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    .chart-title {
+      font-size: 16px;
+      text-anchor: middle;
+      text-decoration: underline;
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Song Popularity (Streams) vs. BPM, Colored by Energy</h2>
+  <div id="chart"></div>
+
+  <script>
+    // Set dimensions for the first chart
+    const margin = { top: 50, right: 100, bottom: 60, left: 70 },
+      width = 1000 - margin.left - margin.right,
+      height = 600 - margin.top - margin.bottom;
+
+    // Append SVG to body for the first chart
+    const svg1 = d3.select("#chart")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right + 100)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Load the data
+    d3.csv("data/cleaned_streams.csv").then(function (data) {
+      data.forEach(d => {
+        d.streams = +d.streams / 1000000;  // Convert to millions
+        d.bpm = +d.bpm;
+        d.energy = parseFloat(d["energy_%"].trim());
+      });
+
+      // Set scales
+      const x = d3.scaleLinear()
+        .domain([d3.min(data, d => d.bpm) - 10, d3.max(data, d => d.bpm) + 10])
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.streams)])  // Already in millions
+        .range([height, 0]);
+
+      const color = d3.scaleSequential(d3.interpolateCool)
+        .domain([d3.min(data, d => d.energy), d3.max(data, d => d.energy)]);
+
+      // Create X and Y axes
+      const xAxis = d3.axisBottom(x);
+      const yAxis = d3.axisLeft(y);
+
+      svg1.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(xAxis);
+
+      svg1.append("g")
+        .call(yAxis);
+
+      // Add gridlines for the x axis
+      svg1.append("g")
+        .attr("class", "grid")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x)
+          .tickSize(-height)
+          .tickFormat(""))
+        .selectAll("line")
+        .attr("stroke", "lightgrey")
+        .attr("stroke-opacity", "0.5");
+
+      // Add gridlines for the y axis
+      svg1.append("g")
+        .attr("class", "grid")
+        .call(d3.axisLeft(y)
+          .tickSize(-width)
+          .tickFormat(""))
+        .selectAll("line")
+        .attr("stroke", "lightgrey")
+        .attr("stroke-opacity", "0.5");
+
+      const jitter = () => (Math.random() - 0.5) * 15;
+
+      // Add dots with jitter and lower opacity
+      svg1.selectAll("circle.bubble")
+        .data(data)
+        .join("circle")
+        .attr("class", "bubble")
+        .attr("cx", d => x(d.bpm) + jitter())
+        .attr("cy", d => y(d.streams))
+        .attr("r", 5)
+        .style("fill", d => color(d.energy))
+        .style("stroke", "black");
+
+      // Add X axis label
+      svg1.append("text")
+        .attr("text-anchor", "end")
+        .attr("x", width / 2 + margin.left)
+        .attr("y", height + margin.top - 10)
+        .style("font-size", "12px")
+        .text("BPM");
+
+      // Add Y axis label with "in Millions"
+      svg1.append("text")
+        .attr("text-anchor", "end")
+        .attr("x", -height / 2 + margin.top)
+        .attr("y", -margin.left + 15)
+        .attr("transform", "rotate(-90)")
+        .style("font-size", "12px")
+        .text("Streams (in Millions)");
+
+      // Add title
+      svg1.append("text")
+        .attr("x", (width / 2))
+        .attr("y", 0 - (margin.top / 2))
+        .attr("class", "chart-title")
+        .text("Song Popularity (Streams) vs BPM");
+
+      // Move the legend further to the right
+      const legend = svg1.append("g")
+        .attr("transform", `translate(${width + 120},${height / 6})`);
+
+      const gradientScale = d3.scaleLinear()
+        .domain([0, 1])
+        .range([d3.min(data, d => d.energy), d3.max(data, d => d.energy)]);
+
+      const legendRects = legend.selectAll("rect")
+        .data(d3.range(0, 1, 0.01))
+        .join("rect")
+        .attr("y", (d, i) => i * 3)
+        .attr("width", 30)
+        .attr("height", 3)
+        .attr("fill", d => color(gradientScale(d)));
+
+      // Add labels to the top and bottom of the color scale
+      legend.append("text")
+        .attr("x", -5)
+        .attr("y", 0)
+        .attr("dy", "0.32em")
+        .attr("text-anchor", "end")
+        .style("font-size", "12px")
+        .text("High Energy");
+
+      legend.append("text")
+        .attr("x", -5)
+        .attr("y", legendRects.size() * 3 - 5)
+        .attr("dy", "0.32em")
+        .attr("text-anchor", "end")
+        .style("font-size", "12px")
+        .text("Low Energy");
+
+    }).catch(function (error) {
+      console.log(error);
+    });
+  </script>
+
+  <div id="visualization"></div>
+  <br>
+
+  <script>
+    const margin2 = { top: 40, right: 100, bottom: 100, left: 60 },
+      width2 = 960 - margin2.left - margin2.right,
+      height2 = 500 - margin2.top - margin2.bottom;
+
+    const svg2 = d3.select("#visualization")
+      .append("svg")
+      .attr("width", width2 + margin2.left + margin2.right)
+      .attr("height", height2 + margin2.top + margin2.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin2.left}, ${margin2.top})`);
+
+    const xScale = d3.scaleLinear().range([0, width2]);
+    const yScale = d3.scaleLinear().range([height2, 0]);
+
+    // Color scale from muted yellow to muted pink
+    const colorScale = d3.scaleLinear()
+      .range(["#FF8DA1", "#fff9c4"]); // Muted colors for the heatmap
+
+    const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+    d3.csv("data/cleaned_data.csv").then(data => {
+      data.forEach(d => {
+        d.Year = +d.Year;
+        d.Growth = +d.Growth;
+        d.Avg_Valence = +d.Avg_Valence;
+        d.Avg_BPM = +d.Avg_BPM;
+        d.Avg_Liveness = +d.Avg_Liveness;
+        d.Avg_Energy = +d.Avg_Energy;
+      });
+
+      data = data.filter(d => d.Year >= 1930);
+
+      xScale.domain(d3.extent(data, d => d.Year));
+      //xScale.domain(d3.extent(data, d => d.Year));
+      yScale.domain([0, d3.max(data, d => Math.max(d.Avg_BPM, d.Avg_Energy))]);
+
+      colorScale.domain(d3.extent(data, d => d.Growth));
+
+      data.forEach((d, i) => {
+        if (d.Year != 2021) {
+          svg2.append("rect")
+            .attr("x", xScale(d.Year))
+            .attr("y", 0)
+            .attr("width", width2 / data.length)
+            .attr("height", height2)
+            .attr("fill", colorScale(d.Growth))
+          // .on("mouseover", (event) => {
+          //     tooltip.transition().duration(200).style("opacity", 0.7);
+          //     tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
+          //         .style("left", `${event.pageX + 10}px`)
+          //         .style("top", `${event.pageY - 20}px`);
+          // })
+          // .on("mouseout", () => {
+          //     tooltip.transition().duration(500).style("opacity", 0);
+          // });
+        }
+      });
+
+      // Title
+      svg2.append("text")
+        .attr("class", "chart-title")
+        .attr("x", width2 / 2)
+        .attr("y", -margin2.top / 2)
+        .text("Average Song Metrics and Economic Growth");
+
+      svg2.append("text")
+        .attr("class", "")
+        .attr("x", width2 / 2)
+        .attr("y", height2 + 50)
+        .text("Year");
+
+      svg2.append("text")
+        .attr("class", "small-label")
+        .attr("x", 0)
+        .attr("y", height2 + 55)
+        .text("Economic Growth %");
+
+      data = data.filter(d => d.Avg_BPM != 0 && d.Avg_Energy != 0);
+
+
+      const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+      svg2.append("g")
+        .attr("transform", `translate(0, ${height2})`)
+        .call(xAxis)
+        .append("text")
+        .attr("class", "axis-label")
+        .attr("x", width2 / 2)
+        .attr("y", 40)
+        .style("text-anchor", "middle")
+
+      const yAxis = d3.axisLeft(yScale);
+      const yAxisGroup = svg2.append("g").call(yAxis);
+
+      let currentMetric = "Avg_BPM";
+
+      // Create rectangles for heatmap
+      function drawLines() {
+        const bpmLine = d3.line()
+          .x(d => xScale(d.Year))
+          .y(d => yScale(d.Avg_BPM));
+
+        const energyLine = d3.line()
+          .x(d => xScale(d.Year))
+          .y(d => yScale(d.Avg_Energy));
+
+        svg2.append("path")
+          .datum(data)
+          .attr("fill", "none")
+          .attr("stroke", "#66B2B2")
+          .attr("stroke-width", 2)
+          .attr("d", bpmLine);
+
+        svg2.append("path")
+          .datum(data)
+          .attr("fill", "none")
+          .attr("stroke", "#008080")
+          .attr("stroke-width", 2)
+          .attr("d", energyLine);
+      }
+
+
+      drawLines();
+      function updateMetric(newMetric) {
+        currentMetric = newMetric;
+        yScale.domain([0, d3.max(data, d => d[currentMetric])]);
+        yAxisGroup.transition().duration(1000).call(yAxis);
+
+        drawLine();
+      }
+
+      d3.select("#metricSelect").on("change", function () {
+        const selectedMetric = d3.select(this).property("value");
+        updateMetric(selectedMetric);
+      });
+
+      const legend = svg2.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(0, ${height2 + margin2.bottom - 40})`);
+
+      const legendWidth = width2 / 5;
+      const legendHeight = 20;
+
+      const legendScale = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.Growth))
+        .range([0, legendWidth]);
+      const gradient = legend.append("defs")
+        .append("linearGradient")
+        .attr("id", "gradient");
+
+      const stops = [
+        { offset: "0%", color: "#FF8DA1" },
+        { offset: "100%", color: "#ffffb3" }
+      ];
+
+      stops.forEach(d => {
+        gradient.append("stop")
+          .attr("offset", d.offset)
+          .attr("stop-color", d.color);
+      });
+      legend.append("rect")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "url(#gradient)");
+
+      const legendAxis = d3.axisBottom(legendScale)
+        .ticks(5)
+        .tickFormat(d3.format(".0f"));
+
+      legend.append("g")
+        .attr("transform", `translate(0, ${legendHeight})`)
+        .call(legendAxis);
+
+      const legendData = [
+        { color: "#008080", label: "Energy" },
+        { color: "#66B2B2", label: "Beats Per Minute" }
+      ];
+
+      const svgWidth = 200;
+      const svgHeight = 100;
+      const squareSize = 15;
+      const textOffset = 20;
+
+      const leg = svg2.append("g")
+        .attr("width", svgWidth)
+        .attr("height", svgHeight);
+
+      legendData.forEach((item, index) => {
+        leg.append("rect")
+          .attr("x", 700)
+          .attr("y", 400 + (index * 30))
+          .attr("width", squareSize)
+          .attr("height", squareSize)
+          .attr("fill", item.color);
+
+        svg2.append("text")
+          .attr("x", 700 + textOffset)
+          .attr("y", 410 + (index * 30))
+          .attr("font-family", "Times-New-Roman")
+          .attr("font-size", "10")
+          .text(item.label);
+      });
+
+
+    });
+  </script>
+</body>
+
+</html>
