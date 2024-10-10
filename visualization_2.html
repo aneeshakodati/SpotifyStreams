@@ -190,19 +190,21 @@
                                   .domain(d3.extent(data, d => d.Growth))  // Use actual growth range
                                   .range([0, legendWidth]);  // Width of the legend
 
-            legend.append("defs")
-                  .append("linearGradient")
-                  .attr("id", "gradient")
-                  .selectAll("stop")
-                  .data([
-                    { offset: "0%", color: "#FF8DA1" },  // Start color
-                    { offset: "100%", color: "#ffffb3" } // End color
-                  ])
-                  .enter()
-                  .append("stop")
-                  .attr("offset", d => d.offset)
-                  .attr("stop-color", d => d.color);
+                                  const gradient = legend.append("defs")
+                       .append("linearGradient")
+                       .attr("id", "gradient");
 
+            // Manually append each stop for the gradient
+            const stops = [
+                { offset: "0%", color: "#FF8DA1" },  // Start color
+                { offset: "100%", color: "#ffffb3" } // End color
+            ];
+
+            stops.forEach(d => {
+                gradient.append("stop")
+                        .attr("offset", d.offset)
+                        .attr("stop-color", d.color);
+            });
             legend.append("rect")
                   .attr("width", legendWidth)
                   .attr("height", legendHeight)
