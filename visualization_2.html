@@ -31,8 +31,8 @@
             font-family: 'Times New Roman', Times, serif, sans-serif;
         }
         .small-label {
-            font-size: 10px; /* Set the font size to make it small */
-            font-family: 'Times New Roman', Times, serif, sans-serif; /* Optional: Set font family */
+            font-size: 10px; 
+            font-family: 'Times New Roman', Times, serif, sans-serif; 
         }
 
 
@@ -73,34 +73,55 @@
                 d.Avg_Liveness = +d.Avg_Liveness;
                 d.Avg_Energy = +d.Avg_Energy;
             });
+            
             data = data.filter(d => d.Year >= 1930);
 
-            // Set domains for x and y scales
             xScale.domain(d3.extent(data, d => d.Year));
             //xScale.domain(d3.extent(data, d => d.Year));
             yScale.domain([0, d3.max(data, d => Math.max(d.Avg_BPM, d.Avg_Liveness))]);
 
-            // Set domain for color scale based on Growth values
             colorScale.domain(d3.extent(data, d => d.Growth));
+            
+            data.forEach((d, i) => {
+                if(d.Year!=2021){
+                svg.append("rect")
+                    .attr("x", xScale(d.Year))
+                    .attr("y", 0) 
+                    .attr("width", width / data.length) 
+                    .attr("height", height) 
+                    .attr("fill", colorScale(d.Growth))
+                    // .on("mouseover", (event) => {
+                    //     tooltip.transition().duration(200).style("opacity", 0.7);
+                    //     tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
+                    //         .style("left", `${event.pageX + 10}px`)
+                    //         .style("top", `${event.pageY - 20}px`);
+                    // })
+                    // .on("mouseout", () => {
+                    //     tooltip.transition().duration(500).style("opacity", 0);
+                // });
+                }
+            });
 
             // Title
             svg.append("text")
                .attr("class", "title")
                .attr("x", width / 2)
-               .attr("y", -margin.top / 2) // Position the title above the chart
+               .attr("y", -margin.top / 2) 
                .text("Average Song Metrics and Economic Growth");
 
             svg.append("text")
                .attr("class", "")
                .attr("x", width / 2)
-               .attr("y", height +50) // Position the title above the chart
+               .attr("y", height +50)
                .text("Year");
             
             svg.append("text")
-                    .attr("class", "small-label") // Set a class for styling
+                    .attr("class", "small-label") 
                     .attr("x", 0)
-                    .attr("y", height + 55) // Position the label below the chart
+                    .attr("y", height + 55)
                     .text("Economic Growth %");
+            
+            data = data.filter(d =>  d.Avg_BPM!=0 && d.Avg_Liveness!=0);
 
 
             const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
@@ -119,24 +140,6 @@
             let currentMetric = "Avg_BPM";
 
             // Create rectangles for heatmap
-            data.forEach((d, i) => {
-                if(d.Year!=2021){
-                svg.append("rect")
-                    .attr("x", xScale(d.Year))
-                    .attr("y", 0) // Position at the bottom of the chart
-                    .attr("width", width / data.length-5) // Adjust width based on data length
-                    .attr("height", height) // Fixed height for the heatmap
-                    .attr("fill", colorScale(d.Growth))
-                    .on("mouseover", (event) => {
-                        tooltip.transition().duration(200).style("opacity", 0.7);
-                        tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
-                            .style("left", `${event.pageX + 10}px`)
-                            .style("top", `${event.pageY - 20}px`);
-                    })
-                    .on("mouseout", () => {
-                        tooltip.transition().duration(500).style("opacity", 0);
-                });}
-            });
             function drawLines() {
             const bpmLine = d3.line()
                               .x(d => xScale(d.Year))
@@ -149,27 +152,26 @@
             svg.append("path")
                .datum(data)
                .attr("fill", "none")
-               .attr("stroke", "#66B2B2") // Color for BPM line
+               .attr("stroke", "#66B2B2") 
                .attr("stroke-width", 2)
                .attr("d", bpmLine);
 
             svg.append("path")
                .datum(data)
                .attr("fill", "none")
-               .attr("stroke", "#008080") // Color for Liveness line
+               .attr("stroke", "#008080") 
                .attr("stroke-width", 2)
                .attr("d", livenessLine);
         }
 
 
-            drawLines(); // Draw initial line
-
+            drawLines(); 
             function updateMetric(newMetric) {
                 currentMetric = newMetric;
                 yScale.domain([0, d3.max(data, d => d[currentMetric])]);
                 yAxisGroup.transition().duration(1000).call(yAxis);
                 
-                drawLine(); // Update the line graph for the new metric
+                drawLine();
             }
 
             d3.select("#metricSelect").on("change", function() {
@@ -177,27 +179,23 @@
                 updateMetric(selectedMetric);
             });
 
-            // Add color legend for Economic Growth
             const legend = svg.append("g")
                               .attr("class", "legend")
-                              .attr("transform", `translate(0, ${height + margin.bottom - 40})`); // Position at the bottom
+                              .attr("transform", `translate(0, ${height + margin.bottom - 40})`); 
 
-            const legendWidth = width / 5;  // Width of the legend
-            const legendHeight = 20;     // Height of the legend
+            const legendWidth = width / 5;  
+            const legendHeight = 20;
 
-            // Create a linear gradient for the legend
             const legendScale = d3.scaleLinear()
-                                  .domain(d3.extent(data, d => d.Growth))  // Use actual growth range
-                                  .range([0, legendWidth]);  // Width of the legend
-
+                                  .domain(d3.extent(data, d => d.Growth)) 
+                                  .range([0, legendWidth]);  
                                   const gradient = legend.append("defs")
                        .append("linearGradient")
                        .attr("id", "gradient");
 
-            // Manually append each stop for the gradient
             const stops = [
-                { offset: "0%", color: "#FF8DA1" },  // Start color
-                { offset: "100%", color: "#ffffb3" } // End color
+                { offset: "0%", color: "#FF8DA1" },  
+                { offset: "100%", color: "#ffffb3" } 
             ];
 
             stops.forEach(d => {
@@ -210,13 +208,12 @@
                   .attr("height", legendHeight)
                   .style("fill", "url(#gradient)");
 
-            // Append axis for the legend
             const legendAxis = d3.axisBottom(legendScale)
                                  .ticks(5)
-                                 .tickFormat(d3.format(".0f")); // Format for Growth values
+                                 .tickFormat(d3.format(".0f"));
 
             legend.append("g")
-                  .attr("transform", `translate(0, ${legendHeight})`) // Position below the gradient
+                  .attr("transform", `translate(0, ${legendHeight})`) 
                   .call(legendAxis);
             
                 const legendData = [
@@ -236,14 +233,14 @@
                 legendData.forEach((item, index) => {
                     leg.append("rect")
                     .attr("x", 700)
-                    .attr("y", 400 + (index * 30)) // Adjust y position based on index
+                    .attr("y", 400 + (index * 30)) 
                     .attr("width", squareSize)
                     .attr("height", squareSize)
                     .attr("fill", item.color);
 
                     svg.append("text")
                     .attr("x", 700+textOffset)
-                    .attr("y", 410 + (index * 30)) // Adjust y position for text
+                    .attr("y", 410 + (index * 30)) 
                     .attr("font-family", "Times-New-Roman")
                     .attr("font-size", "10")
                     .text(item.label);
