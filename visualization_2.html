@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spotify & World Events Visualization</title>
+    <title>Spotify & Econ Growth Visualization</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
         .axis-label {
@@ -41,13 +41,7 @@
 <body>
 
     <div id="visualization"></div>
-    <label for="metricSelect">Select Metric:</label>
-    <select id="metricSelect">
-        <option value="Avg_Valence">Valence</option>
-        <option value="Avg_BPM">BPM</option>
-        <option value="Avg_Liveness">Liveness</option>
-        <option value="Avg_Energy">Energy</option>
-    </select>
+    
 
     <script>
         const margin = { top: 40, right: 100, bottom: 100, left: 60 },
@@ -83,7 +77,8 @@
 
             // Set domains for x and y scales
             xScale.domain(d3.extent(data, d => d.Year));
-            yScale.domain([0, d3.max(data, d => d.Avg_Valence)]);  // Default to Avg_Valence for initial view
+            //xScale.domain(d3.extent(data, d => d.Year));
+            yScale.domain([0, d3.max(data, d => Math.max(d.Avg_BPM, d.Avg_Liveness))]);
 
             // Set domain for color scale based on Growth values
             colorScale.domain(d3.extent(data, d => d.Growth));
@@ -93,7 +88,7 @@
                .attr("class", "title")
                .attr("x", width / 2)
                .attr("y", -margin.top / 2) // Position the title above the chart
-               .text("Spotify Metrics and Economic Growth");
+               .text("Average Song Metrics and Economic Growth");
 
             svg.append("text")
                .attr("class", "")
@@ -121,45 +116,53 @@
             const yAxis = d3.axisLeft(yScale);
             const yAxisGroup = svg.append("g").call(yAxis);
 
-            let currentMetric = "Avg_Valence";
+            let currentMetric = "Avg_BPM";
 
             // Create rectangles for heatmap
-            svg.selectAll("rect")
-                .data(data)
-                .enter()
-                .append("rect")
-                .attr("x", (d) => xScale(d.Year))
-                .attr("y", 0) // Position at the bottom of the chart
-                .attr("width", width / data.length) // Adjust width based on data length
-                .attr("height", height) // Fixed height for the heatmap
-                .attr("fill", (d) => colorScale(d.Growth))
-                .on("mouseover", (event, d) => {
-                    tooltip.transition().duration(200).style("opacity", 0.7);
-                    tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
-                           .style("left", `${event.pageX + 10}px`)
-                           .style("top", `${event.pageY - 20}px`);
-                })
-                .on("mouseout", () => {
-                    tooltip.transition().duration(500).style("opacity", 0);
-                });
+            data.forEach((d, i) => {
+                if(d.Year!=2021){
+                svg.append("rect")
+                    .attr("x", xScale(d.Year))
+                    .attr("y", 0) // Position at the bottom of the chart
+                    .attr("width", width / data.length-5) // Adjust width based on data length
+                    .attr("height", height) // Fixed height for the heatmap
+                    .attr("fill", colorScale(d.Growth))
+                    .on("mouseover", (event) => {
+                        tooltip.transition().duration(200).style("opacity", 0.7);
+                        tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
+                            .style("left", `${event.pageX + 10}px`)
+                            .style("top", `${event.pageY - 20}px`);
+                    })
+                    .on("mouseout", () => {
+                        tooltip.transition().duration(500).style("opacity", 0);
+                });}
+            });
+            function drawLines() {
+            const bpmLine = d3.line()
+                              .x(d => xScale(d.Year))
+                              .y(d => yScale(d.Avg_BPM));
 
-            // Function to draw line for selected metric
-            function drawLine() {
-                const line = d3.line()
-                               .x(d => xScale(d.Year))
-                               .y(d => yScale(d[currentMetric]));
+            const livenessLine = d3.line()
+                                  .x(d => xScale(d.Year))
+                                  .y(d => yScale(d.Avg_Liveness));
 
-                svg.selectAll(".line").remove(); // Remove previous lines
-                svg.append("path")
-                   .datum(data)
-                   .attr("class", "line")
-                   .attr("fill", "none")
-                   .attr("stroke", "blue") // Color for the line
-                   .attr("stroke-width", 2)
-                   .attr("d", line);
-            }
+            svg.append("path")
+               .datum(data)
+               .attr("fill", "none")
+               .attr("stroke", "#66B2B2") // Color for BPM line
+               .attr("stroke-width", 2)
+               .attr("d", bpmLine);
 
-            drawLine(); // Draw initial line
+            svg.append("path")
+               .datum(data)
+               .attr("fill", "none")
+               .attr("stroke", "#008080") // Color for Liveness line
+               .attr("stroke-width", 2)
+               .attr("d", livenessLine);
+        }
+
+
+            drawLines(); // Draw initial line
 
             function updateMetric(newMetric) {
                 currentMetric = newMetric;
@@ -213,6 +216,38 @@
             legend.append("g")
                   .attr("transform", `translate(0, ${legendHeight})`) // Position below the gradient
                   .call(legendAxis);
+            
+                const legendData = [
+                    { color: "#008080", label: "Liveliness" },
+                    { color: "#66B2B2", label: "Beats Per Minute" }
+                ];
+
+                const svgWidth = 200;
+                const svgHeight = 100;
+                const squareSize = 15;
+                const textOffset = 20;
+
+                const leg = svg.append("g")
+                            .attr("width", svgWidth)
+                            .attr("height", svgHeight);
+
+                legendData.forEach((item, index) => {
+                    leg.append("rect")
+                    .attr("x", 700)
+                    .attr("y", 400 + (index * 30)) // Adjust y position based on index
+                    .attr("width", squareSize)
+                    .attr("height", squareSize)
+                    .attr("fill", item.color);
+
+                    svg.append("text")
+                    .attr("x", 700+textOffset)
+                    .attr("y", 410 + (index * 30)) // Adjust y position for text
+                    .attr("font-family", "Times-New-Roman")
+                    .attr("font-size", "10")
+                    .text(item.label);
+                });
+
+            
         });
     </script>
 </body>
