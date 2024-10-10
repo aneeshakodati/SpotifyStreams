@@ -48,7 +48,7 @@ events_aggregated = events_cleaned.groupby('Year').agg({
 
 events_aggregated.columns = ['Year', 'Events']
 
-merged_df = pd.merge(spotify_aggregated, gdp_cleaned, on='Year', how='inner')
+merged_df = pd.merge(spotify_aggregated, gdp_cleaned, on='Year', how='right')
 
 print(merged_df.head())
 
