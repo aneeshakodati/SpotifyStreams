@@ -3,6 +3,12 @@ import pandas as pd
 # Load the datasets
 spotify_df = pd.read_csv('spotify_most_streamed_songs.csv')
 events_df = pd.read_csv('world_important_events.csv')
+gdp_df = pd.read_csv('gdp_data.csv')
+
+gdp_cleaned=gdp_df[['Year', 'Growth']]
+print(gdp_cleaned)
+gdp_cleaned['Growth']=gdp_cleaned['Growth'].apply( lambda x: (float(x.strip('%'))) if isinstance(x, str) else (x * 100))
+print(gdp_cleaned)
 
 # Clean and aggregate Spotify streams data
 streams_cleaned = spotify_df[['streams', 'bpm', 'energy_%', 'speechiness_%']]
@@ -20,6 +26,7 @@ spotify_cleaned = spotify_cleaned.dropna()
 spotify_cleaned['valence_%'] = spotify_cleaned['valence_%'].apply(lambda x: x * 100 if x <= 1 else x)
 spotify_cleaned['energy_%'] = spotify_cleaned['energy_%'].apply(lambda x: x * 100 if x <= 1 else x)
 spotify_cleaned['liveness_%'] = spotify_cleaned['liveness_%'].apply(lambda x: x * 100 if x <= 1 else x)
+
 
 # Aggregate the Spotify data by year
 spotify_aggregated = spotify_cleaned.groupby('released_year').agg({
