@@ -6,10 +6,6 @@
     <title>Spotify & World Events Visualization</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
-        .line {
-            fill: none;
-            stroke-width: 2;
-        }
         .axis-label {
             font-size: 14px;
             font-family: Arial, sans-serif;
@@ -22,8 +18,24 @@
             pointer-events: none;
         }
         .legend {
-            cursor: pointer;
+            font-size: 12px;
         }
+        .legend rect {
+            stroke: #ccc;
+            stroke-width: 1px;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            text-anchor: middle;
+            font-family: 'Times New Roman', Times, serif, sans-serif;
+        }
+        .small-label {
+            font-size: 10px; /* Set the font size to make it small */
+            font-family: 'Times New Roman', Times, serif, sans-serif; /* Optional: Set font family */
+        }
+
+
     </style>
 </head>
 <body>
@@ -38,8 +50,7 @@
     </select>
 
     <script>
-
-        const margin = { top: 40, right: 100, bottom: 50, left: 60 },
+        const margin = { top: 40, right: 100, bottom: 100, left: 60 },
               width = 960 - margin.left - margin.right,
               height = 500 - margin.top - margin.bottom;
 
@@ -53,22 +64,49 @@
         const xScale = d3.scaleLinear().range([0, width]);
         const yScale = d3.scaleLinear().range([height, 0]);
 
-        const line = d3.line()
-                       .x(d => xScale(d.Year))
-                       .y(d => yScale(d.value));
+        // Color scale from muted yellow to muted pink
+        const colorScale = d3.scaleLinear()
+                             .range(["#FF8DA1", "#fff9c4"]); // Muted colors for the heatmap
 
         const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
 
-        d3.csv("data/cleaned_data_2.csv").then(data => {
+        d3.csv("data/cleaned_data.csv").then(data => {
             data.forEach(d => {
                 d.Year = +d.Year;
+                d.Growth = +d.Growth;  
                 d.Avg_Valence = +d.Avg_Valence;
                 d.Avg_BPM = +d.Avg_BPM;
                 d.Avg_Liveness = +d.Avg_Liveness;
                 d.Avg_Energy = +d.Avg_Energy;
             });
+            data = data.filter(d => d.Year >= 1930);
 
+            // Set domains for x and y scales
             xScale.domain(d3.extent(data, d => d.Year));
+            yScale.domain([0, d3.max(data, d => d.Avg_Valence)]);  // Default to Avg_Valence for initial view
+
+            // Set domain for color scale based on Growth values
+            colorScale.domain(d3.extent(data, d => d.Growth));
+
+            // Title
+            svg.append("text")
+               .attr("class", "title")
+               .attr("x", width / 2)
+               .attr("y", -margin.top / 2) // Position the title above the chart
+               .text("Spotify Metrics and Economic Growth");
+
+            svg.append("text")
+               .attr("class", "")
+               .attr("x", width / 2)
+               .attr("y", height +50) // Position the title above the chart
+               .text("Year");
+            
+            svg.append("text")
+                    .attr("class", "small-label") // Set a class for styling
+                    .attr("x", 0)
+                    .attr("y", height + 55) // Position the label below the chart
+                    .text("Economic Growth %");
+
 
             const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
             svg.append("g")
@@ -79,56 +117,102 @@
                .attr("x", width / 2)
                .attr("y", 40)
                .style("text-anchor", "middle")
-               .text("Year");
 
             const yAxis = d3.axisLeft(yScale);
             const yAxisGroup = svg.append("g").call(yAxis);
 
             let currentMetric = "Avg_Valence";
-            
-            yScale.domain([0, d3.max(data, d => d[currentMetric])]);
 
-            let linePath = svg.append("path")
-                              .datum(data)
-                              .attr("class", "line")
-                              .attr("stroke", "steelblue")
-                              .attr("d", line.x(d => xScale(d.Year)).y(d => yScale(d[currentMetric])));
+            // Create rectangles for heatmap
+            svg.selectAll("rect")
+                .data(data)
+                .enter()
+                .append("rect")
+                .attr("x", (d) => xScale(d.Year))
+                .attr("y", 0) // Position at the bottom of the chart
+                .attr("width", width / data.length) // Adjust width based on data length
+                .attr("height", height) // Fixed height for the heatmap
+                .attr("fill", (d) => colorScale(d.Growth))
+                .on("mouseover", (event, d) => {
+                    tooltip.transition().duration(200).style("opacity", 0.7);
+                    tooltip.html(`Year: ${d.Year}<br>Growth: ${d.Growth}`)
+                           .style("left", `${event.pageX + 10}px`)
+                           .style("top", `${event.pageY - 20}px`);
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
 
-            let points = svg.selectAll("circle")
-                            .data(data)
-                            .enter()
-                            .append("circle")
-                            .attr("cx", d => xScale(d.Year))
-                            .attr("cy", d => yScale(d[currentMetric]))
-                            .attr("r", 4)
-                            .attr("fill", "red")
-                            // .on("click", (event, d) => {
-                            //     tooltip.transition().duration(200).style("opacity", 0.9);
-                            //     tooltip.html(`Year: ${d.Year}<br>Event: ${d.Events}`)
-                            //            .style("left", `${event.pageX + 10}px`)
-                            //            .style("top", `${event.pageY - 20}px`);
-                            // });
+            // Function to draw line for selected metric
+            function drawLine() {
+                const line = d3.line()
+                               .x(d => xScale(d.Year))
+                               .y(d => yScale(d[currentMetric]));
 
+                svg.selectAll(".line").remove(); // Remove previous lines
+                svg.append("path")
+                   .datum(data)
+                   .attr("class", "line")
+                   .attr("fill", "none")
+                   .attr("stroke", "blue") // Color for the line
+                   .attr("stroke-width", 2)
+                   .attr("d", line);
+            }
+
+            drawLine(); // Draw initial line
 
             function updateMetric(newMetric) {
                 currentMetric = newMetric;
-
                 yScale.domain([0, d3.max(data, d => d[currentMetric])]);
                 yAxisGroup.transition().duration(1000).call(yAxis);
-
-                linePath.transition()
-                        .duration(1000)
-                        .attr("d", line.x(d => xScale(d.Year)).y(d => yScale(d[currentMetric])));
-
-                points.transition()
-                      .duration(1000)
-                      .attr("cy", d => yScale(d[currentMetric]));
+                
+                drawLine(); // Update the line graph for the new metric
             }
 
             d3.select("#metricSelect").on("change", function() {
                 const selectedMetric = d3.select(this).property("value");
                 updateMetric(selectedMetric);
             });
+
+            // Add color legend for Economic Growth
+            const legend = svg.append("g")
+                              .attr("class", "legend")
+                              .attr("transform", `translate(0, ${height + margin.bottom - 40})`); // Position at the bottom
+
+            const legendWidth = width / 5;  // Width of the legend
+            const legendHeight = 20;     // Height of the legend
+
+            // Create a linear gradient for the legend
+            const legendScale = d3.scaleLinear()
+                                  .domain(d3.extent(data, d => d.Growth))  // Use actual growth range
+                                  .range([0, legendWidth]);  // Width of the legend
+
+            legend.append("defs")
+                  .append("linearGradient")
+                  .attr("id", "gradient")
+                  .selectAll("stop")
+                  .data([
+                    { offset: "0%", color: "#FF8DA1" },  // Start color
+                    { offset: "100%", color: "#ffffb3" } // End color
+                  ])
+                  .enter()
+                  .append("stop")
+                  .attr("offset", d => d.offset)
+                  .attr("stop-color", d => d.color);
+
+            legend.append("rect")
+                  .attr("width", legendWidth)
+                  .attr("height", legendHeight)
+                  .style("fill", "url(#gradient)");
+
+            // Append axis for the legend
+            const legendAxis = d3.axisBottom(legendScale)
+                                 .ticks(5)
+                                 .tickFormat(d3.format(".0f")); // Format for Growth values
+
+            legend.append("g")
+                  .attr("transform", `translate(0, ${legendHeight})`) // Position below the gradient
+                  .call(legendAxis);
         });
     </script>
 </body>
