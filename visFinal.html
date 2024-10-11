@@ -167,7 +167,7 @@
         .attr("x", (width / 2))
         .attr("y", 0 - (margin.top / 2))
         .attr("class", "chart-title")
-        .text("Song Popularity (Streams) vs BPM");
+        .text("Song Popularity (Streams) vs BPM, Plotted by Energy");
 
       // Move the legend further to the right
       const legend = svg1.append("g")
@@ -319,7 +319,7 @@
         svg2.append("path")
           .datum(data)
           .attr("fill", "none")
-          .attr("stroke", "#66B2B2")
+          .attr("stroke", "#595fd1")
           .attr("stroke-width", 2)
           .attr("d", bpmLine);
 
@@ -385,7 +385,7 @@
 
       const legendData = [
         { color: "#008080", label: "Energy" },
-        { color: "#66B2B2", label: "Beats Per Minute" }
+        { color: "#595fd1", label: "Beats Per Minute" }
       ];
 
       const svgWidth = 200;
